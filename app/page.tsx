@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Header from "@/components/Header"
 import CustomerQueue from "@/components/CustomerQueue"
 import ChecklistPanel from "@/components/ChecklistPanel"
@@ -9,6 +10,7 @@ import { useFirebaseAuth } from "@/components/FirebaseAuthProvider"
 
 export default function Home(){
   const { user, loading } = useFirebaseAuth()
+  const router = useRouter()
 
   const {customers,addCustomer,toggleItem} = useCustomers()
 
@@ -32,6 +34,14 @@ export default function Home(){
         <p className="text-slate-500">Loading…</p>
       </div>
     )
+  }
+
+  if (!user) {
+    // Not authenticated: send to login
+    useEffect(() => {
+      router.replace("/login")
+    }, [router])
+    return null
   }
 
   return(
