@@ -1,22 +1,14 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSession } from "next-auth/react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import Header from "@/components/Header"
 import CustomerQueue from "@/components/CustomerQueue"
 import ChecklistPanel from "@/components/ChecklistPanel"
 import { useCustomers } from "@/hooks/useCustomers"
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider"
 
 export default function Home(){
-  const { data: session, status } = useSession()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.replace("/login")
-    }
-  }, [status, router])
+  const { user, loading } = useFirebaseAuth()
 
   const {customers,addCustomer,toggleItem} = useCustomers()
 
@@ -34,7 +26,7 @@ export default function Home(){
 
   const selectedCustomer = customers.find(c=>c.id===selected)
 
-  if (status === "loading" || status === "unauthenticated") {
+  if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <p className="text-slate-500">Loading…</p>
@@ -77,7 +69,7 @@ export default function Home(){
           <ChecklistPanel
             customer={selectedCustomer}
             toggleItem={toggleItem}
-            signedInUserEmail={session?.user?.email ?? undefined}
+            signedInUserEmail={user?.email ?? undefined}
           />
 
         </div>

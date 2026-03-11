@@ -1,152 +1,276 @@
+// "use client"
+
+// import { useState } from "react"
+// import { signIn } from "next-auth/react"
+
+// export default function LoginPage() {
+
+//   const [email,setEmail] = useState("")
+//   const [loading,setLoading] = useState(false)
+//   const [message,setMessage] = useState("")
+//   const [error,setError] = useState("")
+
+//   async function handleSubmit(e: React.FormEvent) {
+
+//     e.preventDefault()
+
+//     if(!email) return
+
+//     setLoading(true)
+//     setError("")
+//     setMessage("")
+
+//     const res = await signIn("email",{
+//       email,
+//       redirect:false,
+//       callbackUrl:"/"
+//     })
+
+//     setLoading(false)
+
+//     if(res?.error){
+//       setError(res.error)
+//       return
+//     }
+
+//     if(res?.ok){
+//       setMessage("Check your email for the sign-in link.")
+//     }
+
+//   }
+
+//   return (
+
+//     <div className="min-h-screen flex items-center justify-center bg-slate-50">
+
+//       <form
+//         onSubmit={handleSubmit}
+//         className="bg-white p-6 rounded-lg shadow w-full max-w-sm space-y-4"
+//       >
+
+//         <h1 className="text-xl font-semibold">
+//           GN Checklist Login
+//         </h1>
+
+//         <input
+//           type="email"
+//           required
+//           value={email}
+//           onChange={(e)=>setEmail(e.target.value)}
+//           placeholder="you@company.com"
+//           className="w-full border rounded px-3 py-2"
+//         />
+
+//         {message && (
+//           <p className="text-green-600 text-sm">{message}</p>
+//         )}
+
+//         {error && (
+//           <p className="text-red-600 text-sm">{error}</p>
+//         )}
+
+//         <button
+//           disabled={loading}
+//           className="w-full bg-blue-600 text-white py-2 rounded"
+//         >
+//           {loading ? "Sending..." : "Send magic link"}
+//         </button>
+
+//       </form>
+
+//     </div>
+
+//   )
+// }
+
+
+
+
+// "use client"
+
+// import { useState } from "react"
+// import { signIn } from "next-auth/react"
+
+// export default function LoginPage(){
+
+//   const [email,setEmail] = useState("")
+//   const [loading,setLoading] = useState(false)
+//   const [message,setMessage] = useState("")
+//   const [error,setError] = useState("")
+
+//   async function handleSubmit(e:any){
+
+//     e.preventDefault()
+
+//     setLoading(true)
+
+//     const res = await signIn("email",{
+//       email,
+//       redirect:false
+//     })
+
+//     setLoading(false)
+
+//     if(res?.error){
+//       setError(res.error)
+//       return
+//     }
+
+//     setMessage("Check your email for the login link.")
+
+//   }
+
+//   return(
+
+//     <div className="min-h-screen flex items-center justify-center">
+
+//       <form onSubmit={handleSubmit} className="p-6 border rounded w-96 space-y-4">
+
+//         <h1 className="text-xl font-semibold">
+//           GN Checklist Login
+//         </h1>
+
+//         <input
+//           type="email"
+//           placeholder="you@email.com"
+//           value={email}
+//           onChange={(e)=>setEmail(e.target.value)}
+//           required
+//           className="w-full border p-2 rounded"
+//         />
+
+//         {message && (
+//           <p className="text-green-600">{message}</p>
+//         )}
+
+//         {error && (
+//           <p className="text-red-600">{error}</p>
+//         )}
+
+//         <button
+//           className="w-full bg-blue-600 text-white py-2 rounded"
+//           disabled={loading}
+//         >
+//           {loading ? "Sending..." : "Send Login Link"}
+//         </button>
+
+//       </form>
+
+//     </div>
+
+//   )
+
+// }
+
 "use client";
 
-import { useState, useEffect } from "react";
-import { signIn } from "next-auth/react";
+import { useEffect, useState } from "react";
+import {
+  sendSignInLinkToEmail,
+  isSignInWithEmailLink,
+  signInWithEmailLink,
+} from "firebase/auth";
+import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase";
+import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "sent" | "error">("idle");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [devMagicLink, setDevMagicLink] = useState<string | null>(null);
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [error, setError] = useState("");
+  const router = useRouter();
+  const { user } = useFirebaseAuth();
 
-  // In dev (no SMTP), poll for the magic link so we can show "Click here to sign in"
+  // If already logged in, go home
   useEffect(() => {
-    if (status !== "sent" || !email.trim()) {
-      setDevMagicLink(null);
-      return;
+    if (user) router.replace("/");
+  }, [user, router]);
+
+  // Complete sign-in when coming back from email link
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const href = window.location.href;
+    if (!isSignInWithEmailLink(auth, href)) return;
+
+    let emailToUse =
+      window.localStorage.getItem("passwordlessEmail") || email;
+
+    // If we don't have the email stored (e.g. opened on another device),
+    // ask the user once – this matches Firebase's recommended pattern.
+    if (!emailToUse) {
+      emailToUse = window.prompt("Confirm your email for login") || "";
     }
-    let cancelled = false;
-    const emailParam = encodeURIComponent(email.trim());
-    const check = async () => {
-      if (cancelled) return;
+
+    if (!emailToUse) return;
+
+    (async () => {
       try {
-        const res = await fetch(`/api/auth/dev-magic-link?email=${emailParam}`);
-        if (!res.ok) return;
-
-        const text = await res.text();
-        if (!text.trim()) return;
-
-        let data: unknown;
-        try {
-          data = JSON.parse(text);
-        } catch {
-          return;
-        }
-
-        if (!cancelled && typeof data === "object" && data && (data as any).url) {
-          setDevMagicLink((data as any).url as string);
-        }
-      } catch {
-        // ignore
+        await signInWithEmailLink(auth, emailToUse, href);
+        window.localStorage.removeItem("passwordlessEmail");
+        router.replace("/");
+      } catch (e: any) {
+        setStatus("error");
+        setError(e.message ?? "Could not complete sign-in.");
       }
-    };
-    // Poll a few times (server may still be writing the link after signIn)
-    const t = setTimeout(check, 300);
-    const t2 = setTimeout(check, 1200);
-    const t3 = setTimeout(check, 2500);
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [status, email]);
+    })();
+  }, [email, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email.trim()) return;
-    setStatus("loading");
-    setErrorMessage("");
-    setDevMagicLink(null);
+    if (!email) return;
+
+    setStatus("sending");
+    setError("");
+
     try {
-      const res = await signIn("email", {
-        email: email.trim(),
-        redirect: false,
-        callbackUrl: "/",
-      });
-      if (res?.error) {
-        setStatus("error");
-        const msg =
-          res.error === "AccessDenied"
-            ? "Your email is not in ALLOWED_EMAILS. Add it in .env.local (comma-separated list)."
-            : res.error === "Configuration"
-              ? "Server auth misconfigured. Check NEXTAUTH_SECRET and NEXTAUTH_URL in .env.local."
-              : res.error;
-        setErrorMessage(msg);
-        return;
-      }
-      if (res?.ok) {
-        setStatus("sent");
-        return;
-      }
+      const actionCodeSettings = {
+        url: window.location.origin + "/login",
+        handleCodeInApp: true,
+      };
+      await sendSignInLinkToEmail(auth, email, actionCodeSettings);
+      window.localStorage.setItem("passwordlessEmail", email);
+      setStatus("sent");
+    } catch (e: any) {
       setStatus("error");
-      setErrorMessage(res?.error ? String(res.error) : "Something went wrong. Check the terminal for errors.");
-    } catch (err) {
-      setStatus("error");
-      setErrorMessage(err instanceof Error ? err.message : "Something went wrong.");
+      setError(e.message ?? "Failed to send sign-in link.");
     }
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-        <h1 className="text-xl font-semibold text-slate-900 mb-1">
-          GN Checklist
-        </h1>
-        <p className="text-sm text-slate-500 mb-6">
-          Sign in with your work email (magic link).
-        </p>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <label className="block text-sm font-medium text-slate-700">
-            Email
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="you@company.com"
-            required
-            disabled={status === "loading" || status === "sent"}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:opacity-60"
-          />
-          {status === "sent" && (
-            <div className="space-y-2">
-              <p className="text-sm text-emerald-600">
-                Check your inbox for a sign-in link.
-              </p>
-              {devMagicLink ? (
-                <p className="text-xs text-slate-600">
-                  No email configured:{" "}
-                  <a
-                    href={devMagicLink}
-                    className="text-blue-600 font-medium underline hover:no-underline"
-                  >
-                    Click here to sign in
-                  </a>
-                </p>
-              ) : (
-                <p className="text-xs text-slate-500">
-                  Loading sign-in link…
-                </p>
-              )}
-            </div>
-          )}
-          {status === "error" && errorMessage && (
-            <p className="text-sm text-red-600">{errorMessage}</p>
-          )}
-          <button
-            type="submit"
-            disabled={status === "loading" || status === "sent"}
-            className="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60 transition-colors"
-          >
-            {status === "loading"
-              ? "Sending…"
-              : status === "sent"
-                ? "Check your email"
-                : "Send magic link"}
-          </button>
-        </form>
-      </div>
+    <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-6 rounded-lg shadow w-full max-w-sm space-y-4"
+      >
+        <h1 className="text-xl font-semibold">Customer Checklist Login</h1>
+
+        <input
+          type="email"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@company.com"
+          className="w-full border rounded px-3 py-2"
+        />
+
+        {status === "sent" && (
+          <p className="text-green-600 text-sm">
+            Check your email for the sign-in link.
+          </p>
+        )}
+
+        {status === "error" && error && (
+          <p className="text-red-600 text-sm">{error}</p>
+        )}
+
+        <button
+          type="submit"
+          disabled={status === "sending"}
+          className="w-full bg-blue-600 text-white py-2 rounded"
+        >
+          {status === "sending" ? "Sending..." : "Send magic link"}
+        </button>
+      </form>
     </div>
   );
 }
