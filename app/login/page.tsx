@@ -21,8 +21,21 @@ export default function LoginPage() {
       if (cancelled) return;
       try {
         const res = await fetch(`/api/auth/dev-magic-link?email=${emailParam}`);
-        const data = await res.json();
-        if (!cancelled && data?.url) setDevMagicLink(data.url);
+        if (!res.ok) return;
+
+        const text = await res.text();
+        if (!text.trim()) return;
+
+        let data: unknown;
+        try {
+          data = JSON.parse(text);
+        } catch {
+          return;
+        }
+
+        if (!cancelled && typeof data === "object" && data && (data as any).url) {
+          setDevMagicLink((data as any).url as string);
+        }
       } catch {
         // ignore
       }
