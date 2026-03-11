@@ -19,11 +19,19 @@ function getAllowedEmails(): string[] {
   return list.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
 }
 
-// Only use real SMTP when host, port, and at least one credential are set (avoids .env.example placeholders)
+// Support both generic EMAIL_SERVER_* and SendGrid-style SMTP_* envs
+const smtpHost =
+  process.env.SMTP_HOST ?? process.env.EMAIL_SERVER_HOST ?? undefined;
+const smtpPort =
+  process.env.SMTP_PORT ?? process.env.EMAIL_SERVER_PORT ?? undefined;
+const smtpUser =
+  process.env.SMTP_USER ?? process.env.EMAIL_SERVER_USER ?? undefined;
+const smtpPass =
+  process.env.SMTP_PASSWORD ?? process.env.EMAIL_SERVER_PASSWORD ?? undefined;
+
+// Only use real SMTP when host, port, and at least one credential are set
 const hasEmailConfig =
-  !!process.env.EMAIL_SERVER_HOST &&
-  !!process.env.EMAIL_SERVER_PORT &&
-  (!!process.env.EMAIL_SERVER_USER || !!process.env.EMAIL_SERVER_PASSWORD);
+  !!smtpHost && !!smtpPort && (!!smtpUser || !!smtpPass);
 
 // Dev: store last magic link so login page can show "Click here to sign in" when not using real SMTP
 const lastMagicLinkByEmail = new Map<string, { url: string; at: number }>();
@@ -40,7 +48,11 @@ export function getLastMagicLinkForDev(email: string): string | null {
   return entry.url;
 }
 
-const from = process.env.EMAIL_FROM ?? "noreply@example.com";
+// Prefer SendGrid-style MAIL_FROM_*, fall back to EMAIL_FROM
+const fromEmail =
+  process.env.MAIL_FROM_EMAIL ?? process.env.EMAIL_FROM ?? "no-reply@example.com";
+const fromName = process.env.MAIL_FROM_NAME ?? "";
+const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
 
 async function sendMagicLinkEmail(identifier: string, url: string) {
   const key = identifier.toLowerCase();
@@ -50,12 +62,12 @@ async function sendMagicLinkEmail(identifier: string, url: string) {
   if (!hasEmailConfig) return;
 
   const transport = nodemailer.createTransport({
-    host: process.env.EMAIL_SERVER_HOST,
-    port: Number(process.env.EMAIL_SERVER_PORT),
-    secure: process.env.EMAIL_SERVER_PORT === "465",
+    host: smtpHost,
+    port: Number(smtpPort),
+    secure: smtpPort === "465",
     auth: {
-      user: process.env.EMAIL_SERVER_USER,
-      pass: process.env.EMAIL_SERVER_PASSWORD,
+      user: smtpUser,
+      pass: smtpPass,
     },
   });
 
