@@ -1,20 +1,21 @@
 import type { NextAuthOptions } from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import EmailProvider from "next-auth/providers/email";
-import nodemailer from "nodemailer";
+import sgMail from "@sendgrid/mail";
 import { prisma } from "./prisma";
 
 /*
-ENV VARIABLES EXPECTED
+SendGrid Setup
+*/
 
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=yourgmail@gmail.com
-SMTP_PASSWORD=your_app_password
+if (!process.env.SENDGRID_API_KEY) {
+  console.warn("[NextAuth] SENDGRID_API_KEY missing");
+}
 
-EMAIL_FROM=yourgmail@gmail.com
-NEXTAUTH_SECRET=xxxxxxxx
-NEXTAUTH_URL=http://localhost:3000
+sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+
+/*
+NextAuth checks
 */
 
 if (!process.env.NEXTAUTH_SECRET) {
@@ -25,31 +26,35 @@ if (!process.env.NEXTAUTH_URL && process.env.NODE_ENV === "production") {
   console.warn("[NextAuth] NEXTAUTH_URL missing");
 }
 
+/*
+Allowed Emails
+*/
+
 function getAllowedEmails(): string[] {
   const list = process.env.ALLOWED_EMAILS;
   if (!list) return [];
+
   return list
     .split(",")
     .map((e) => e.trim().toLowerCase())
     .filter(Boolean);
 }
 
-/* SMTP CONFIG */
-
-const smtpHost = process.env.SMTP_HOST;
-const smtpPort = Number(process.env.SMTP_PORT || 587);
-const smtpUser = process.env.SMTP_USER;
-const smtpPass = process.env.SMTP_PASSWORD;
-
-const hasEmailConfig = !!smtpHost && !!smtpUser && !!smtpPass;
-
-/* FROM EMAIL */
+/*
+Sender
+*/
 
 const fromEmail = process.env.EMAIL_FROM ?? "no-reply@example.com";
-const fromName = process.env.EMAIL_FROM_NAME ?? "";
-const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+const fromName = process.env.EMAIL_FROM_NAME ?? "Customer Checklist";
 
-/* MAGIC LINK STORAGE (DEV ONLY) */
+const from = {
+  email: fromEmail,
+  name: fromName,
+};
+
+/*
+Magic link storage (dev)
+*/
 
 const lastMagicLinkByEmail = new Map<string, { url: string; at: number }>();
 const MAGIC_LINK_TTL_MS = 15 * 60 * 1000;
@@ -58,7 +63,6 @@ export function getLastMagicLinkForDev(email: string): string | null {
   if (process.env.NODE_ENV !== "development") return null;
 
   const entry = lastMagicLinkByEmail.get(email.toLowerCase());
-
   if (!entry) return null;
 
   if (Date.now() - entry.at > MAGIC_LINK_TTL_MS) {
@@ -69,91 +73,72 @@ export function getLastMagicLinkForDev(email: string): string | null {
   return entry.url;
 }
 
-/* EMAIL SENDER */
+/*
+Send email using SendGrid API
+*/
 
 async function sendMagicLinkEmail(identifier: string, url: string) {
+
   const key = identifier.toLowerCase();
 
   lastMagicLinkByEmail.set(key, { url, at: Date.now() });
 
   console.log("[NextAuth] Magic link:", url);
 
-  if (!hasEmailConfig) {
-    console.warn("[NextAuth] SMTP not configured — email not sent.");
-    return;
-  }
+  const msg = {
+    to: identifier,
+    from,
+    subject: "Sign in to Customer Checklist",
+    text: `Sign in to Customer Checklist\n\n${url}`,
+    html: `
+      <h2>Sign in to Customer Checklist</h2>
+      <p>Click the link below to sign in.</p>
 
-  const transport = nodemailer.createTransport({
-    host: smtpHost,
-    port: smtpPort,
-    secure: smtpPort === 465,
-    auth: {
-      user: smtpUser,
-      pass: smtpPass,
-    },
-  });
+      <p>
+        <a href="${url}"
+           style="background:#2563eb;color:white;padding:12px 24px;
+           text-decoration:none;border-radius:8px;">
+           Sign in
+        </a>
+      </p>
 
-  try {
-    await transport.verify();
-    console.log("[SMTP] Connection verified");
-  } catch (error) {
-    console.error("[SMTP] Connection failed:", error);
-    throw error;
-  }
-
-  const html = `
-  <h2>Sign in to Customer Checklist</h2>
-  <p>Click the link below to sign in.</p>
-  <p>
-    <a href="${url}" 
-       style="background:#2563eb;color:white;padding:12px 24px;
-       text-decoration:none;border-radius:8px;">
-       Sign in
-    </a>
-  </p>
-  <p>If the button doesn't work, copy this link:</p>
-  <p>${url}</p>
-  `;
+      <p>If the button doesn't work, copy this link:</p>
+      <p>${url}</p>
+    `,
+  };
 
   try {
-    await transport.sendMail({
-      from,
-      to: identifier,
-      subject: "Sign in to Customer Checklist",
-      text: `Sign in: ${url}`,
-      html,
-    });
 
-    console.log("[SMTP] Email sent to", identifier);
+    await sgMail.send(msg);
+
+    console.log("[SendGrid] Email sent:", identifier);
+
   } catch (error) {
-    console.error("[SMTP] Failed to send email:", error);
+
+    console.error("[SendGrid] Email failed:", error);
+
     throw error;
+
   }
 }
 
-/* NEXTAUTH CONFIG */
+/*
+NextAuth Configuration
+*/
 
 export const authOptions: NextAuthOptions = {
+
   adapter: PrismaAdapter(prisma),
 
   providers: [
     EmailProvider({
-      server: hasEmailConfig
-        ? {
-            host: smtpHost,
-            port: smtpPort,
-            auth: {
-              user: smtpUser,
-              pass: smtpPass,
-            },
-          }
-        : undefined,
 
-      from,
+      from: fromEmail,
 
       sendVerificationRequest: async ({ identifier, url }) => {
         await sendMagicLinkEmail(identifier, url);
       },
+
     }),
   ],
 
@@ -168,6 +153,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
+
     signIn: async ({ user }) => {
       const email = user?.email?.toLowerCase();
       if (!email) return false;
@@ -205,5 +191,7 @@ export const authOptions: NextAuthOptions = {
       }
       return session;
     },
+
   },
+
 };
