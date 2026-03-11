@@ -28,6 +28,13 @@ export default function Home(){
 
   const selectedCustomer = customers.find(c=>c.id===selected)
 
+  // Redirect unauthenticated users to /login once auth state is known
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login")
+    }
+  }, [loading, user, router])
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
@@ -37,10 +44,7 @@ export default function Home(){
   }
 
   if (!user) {
-    // Not authenticated: send to login
-    useEffect(() => {
-      router.replace("/login")
-    }, [router])
+    // While redirecting, render nothing
     return null
   }
 
