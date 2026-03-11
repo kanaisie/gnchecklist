@@ -213,15 +213,24 @@ export default function LoginPage() {
       try {
         await signInWithEmailLink(auth, emailToUse, href);
 
-        // Upsert user in Firestore
-        await setDoc(
-          doc(db, "users", emailToUse.toLowerCase()),
-          {
-            email: emailToUse.toLowerCase(),
-            lastLoginAt: new Date().toISOString(),
-          },
-          { merge: true }
-        );
+        // Try to upsert user in Firestore, but don't block login on failure
+        try {
+          await setDoc(
+            doc(db, "users", emailToUse.toLowerCase()),
+            {
+              email: emailToUse.toLowerCase(),
+              lastLoginAt: new Date().toISOString(),
+            },
+            { merge: true }
+          );
+        } catch (firestoreError) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            "Firestore write failed, login will still proceed:",
+            firestoreError
+          );
+        }
+
         window.localStorage.removeItem("passwordlessEmail");
         router.replace("/");
       } catch (e: any) {
