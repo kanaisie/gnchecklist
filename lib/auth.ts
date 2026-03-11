@@ -3,6 +3,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import EmailProvider from "next-auth/providers/email";
 import sgMail from "@sendgrid/mail";
 import { prisma } from "./prisma";
+import { sendMagicLinkEmail } from "./email";
 
 /*
 SendGrid Setup
@@ -77,51 +78,63 @@ export function getLastMagicLinkForDev(email: string): string | null {
 Send email using SendGrid API
 */
 
-async function sendMagicLinkEmail(identifier: string, url: string) {
+// async function sendMagicLinkEmail(identifier: string, url: string) {
 
-  const key = identifier.toLowerCase();
+//   const key = identifier.toLowerCase();
 
-  lastMagicLinkByEmail.set(key, { url, at: Date.now() });
+//   lastMagicLinkByEmail.set(key, { url, at: Date.now() });
 
-  console.log("[NextAuth] Magic link:", url);
+//   console.log("[NextAuth] Magic link:", url);
 
-  const msg = {
-    to: identifier,
-    from,
-    subject: "Sign in to Customer Checklist",
-    text: `Sign in to Customer Checklist\n\n${url}`,
-    html: `
-      <h2>Sign in to Customer Checklist</h2>
-      <p>Click the link below to sign in.</p>
+//   const msg = {
+//     to: identifier,
+//     from,
+//     subject: "Sign in to Customer Checklist",
+//     text: `Sign in to Customer Checklist\n\n${url}`,
+//     html: `
+//       <h2>Sign in to Customer Checklist</h2>
+//       <p>Click the link below to sign in.</p>
 
-      <p>
-        <a href="${url}"
-           style="background:#2563eb;color:white;padding:12px 24px;
-           text-decoration:none;border-radius:8px;">
-           Sign in
-        </a>
-      </p>
+//       <p>
+//         <a href="${url}"
+//            style="background:#2563eb;color:white;padding:12px 24px;
+//            text-decoration:none;border-radius:8px;">
+//            Sign in
+//         </a>
+//       </p>
 
-      <p>If the button doesn't work, copy this link:</p>
-      <p>${url}</p>
-    `,
-  };
+//       <p>If the button doesn't work, copy this link:</p>
+//       <p>${url}</p>
+//     `,
+//   };
 
-  try {
+//   try {
 
-    await sgMail.send(msg);
+//     await sgMail.send(msg);
 
-    console.log("[SendGrid] Email sent:", identifier);
+//     console.log("[SendGrid] Email sent:", identifier);
 
-  } catch (error) {
+//   } catch (error) {
 
-    console.error("[SendGrid] Email failed:", error);
+//     console.error("[SendGrid] Email failed:", error);
 
-    throw error;
+//     throw error;
 
-  }
-}
+//   }
+// }
 
+
+EmailProvider({
+
+  from: process.env.EMAIL_FROM,
+
+  sendVerificationRequest: async ({ identifier, url }) => {
+
+    await sendMagicLinkEmail(identifier, url)
+
+  },
+
+})
 /*
 NextAuth Configuration
 */
