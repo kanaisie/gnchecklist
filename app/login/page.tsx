@@ -171,7 +171,8 @@ import {
   signInWithEmailLink,
 } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 import { useFirebaseAuth } from "@/components/FirebaseAuthProvider";
 
 export default function LoginPage() {
@@ -180,6 +181,11 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const router = useRouter();
   const { user } = useFirebaseAuth();
+
+  const allowed = (process.env.NEXT_PUBLIC_ALLOWED_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
 
   // If already logged in, go home
   useEffect(() => {
@@ -206,6 +212,16 @@ export default function LoginPage() {
     (async () => {
       try {
         await signInWithEmailLink(auth, emailToUse, href);
+
+        // Upsert user in Firestore
+        await setDoc(
+          doc(db, "users", emailToUse.toLowerCase()),
+          {
+            email: emailToUse.toLowerCase(),
+            lastLoginAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
         window.localStorage.removeItem("passwordlessEmail");
         router.replace("/");
       } catch (e: any) {
@@ -218,6 +234,13 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email) return;
+
+    const normalized = email.toLowerCase();
+    if (allowed.length && !allowed.includes(normalized)) {
+      setStatus("error");
+      setError("This email is not allowed to sign in.");
+      return;
+    }
 
     setStatus("sending");
     setError("");
