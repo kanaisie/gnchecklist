@@ -198,8 +198,7 @@ export default function LoginPage() {
     const href = window.location.href;
     if (!isSignInWithEmailLink(auth, href)) return;
 
-    let emailToUse =
-      window.localStorage.getItem("passwordlessEmail") || email;
+    let emailToUse = window.localStorage.getItem("passwordlessEmail") || "";
 
     // If we don't have the email stored (e.g. opened on another device),
     // ask the user once – this matches Firebase's recommended pattern.
@@ -238,7 +237,7 @@ export default function LoginPage() {
         setError(e.message ?? "Could not complete sign-in.");
       }
     })();
-  }, [email, router]);
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
