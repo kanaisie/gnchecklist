@@ -79,13 +79,13 @@ export default function Home(){
             />
 
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-              <input
+              {/* <input
                 value={newCustomerName}
                 onChange={e => setNewCustomerName(e.target.value)}
                 placeholder="Customer name"
                 className="w-full sm:w-48 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              />
-              <select
+              /> */}
+              {/* <select
                 value={newAccountType}
                 onChange={e => setNewAccountType(e.target.value)}
                 className="w-full sm:w-40 rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -95,7 +95,7 @@ export default function Home(){
                     {type}
                   </option>
                 ))}
-              </select>
+              </select> */}
               <button
                 className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 onClick={() => {
