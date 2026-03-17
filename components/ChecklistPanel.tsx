@@ -5,12 +5,23 @@ import { Customer } from "@/types/customer"
 interface Props{
   customer?:Customer
   toggleItem:(cid:number,iid:string)=>void
+  updateAccountType:(cid:number, accountType:string)=>void
   /** Email of the signed-in user; used as assignee in markdown export */
   signedInUserEmail?: string | null
 }
 
-export default function ChecklistPanel({customer,toggleItem,signedInUserEmail}:Props){
+const ACCOUNT_TYPES = [
+  "Checking",
+  "Savings",
+  "DDA",
+  "CD",
+  "Money Market",
+  "Loan",
+  "Credit Card",
+  "Other",
+] as const
 
+export default function ChecklistPanel({customer,toggleItem,updateAccountType,signedInUserEmail}:Props){
   if(!customer){
     return (
       <div className="flex-1 p-10 flex items-center justify-center text-slate-500">
@@ -25,6 +36,9 @@ export default function ChecklistPanel({customer,toggleItem,signedInUserEmail}:P
       : "- Completed at: Not completed yet"
     const assignee = signedInUserEmail ?? c.assignee ?? "Unassigned"
 
+
+
+
     const lines = [
       `## Checklist Report`,
       ``,
@@ -32,7 +46,7 @@ export default function ChecklistPanel({customer,toggleItem,signedInUserEmail}:P
       ``,
       `## Customer`,
       `- Name: ${c.name}`,
-      `- Account type: ${c.accountType}`,
+      `- Account type: ${c.accountType.join(", ")}`,
       `- Status: ${c.status}`,
       `- By: ${assignee}`,
       completedLine,
@@ -69,8 +83,23 @@ export default function ChecklistPanel({customer,toggleItem,signedInUserEmail}:P
 
         <div className="text-sm text-slate-600 mb-4 space-y-1">
           <div>
-            Account type:{" "}
-            <span className="font-medium text-slate-900">{customer.accountType}</span>
+            <div className="mb-1">Account types:</div>
+            <div className="flex flex-wrap gap-2">
+              {ACCOUNT_TYPES.map(type => (
+                <label
+                  key={type}
+                  className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-xs"
+                >
+                  <input
+                    type="checkbox"
+                    className="h-3 w-3 accent-emerald-600"
+                    checked={customer.accountType.includes(type)}
+                    onChange={() => updateAccountType(customer.id, type)}
+                  />
+                  <span>{type}</span>
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             Status:{" "}

@@ -8,7 +8,7 @@ export interface ChecklistItem {
   export interface Customer {
     id: number
     name: string
-    accountType: string
+    accountType: string[]
     assignee?: string
     status: "pending" | "in-progress" | "completed"
     completedAt?: string

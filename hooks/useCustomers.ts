@@ -18,7 +18,7 @@ export function useCustomers() {
     RAW_CUSTOMERS.map((c: any, index: number) => ({
       id: index + 1,
       name: `${c.first} ${c.last}`,
-      accountType: "Checking",
+      accountType: ["Checking"],
       status: "pending",
       checklist: initChecklist()
     }))
@@ -29,7 +29,7 @@ export function useCustomers() {
     const newCustomer: Customer = {
       id: Date.now(),
       name,
-      accountType,
+      accountType: [accountType],
       status: "pending",
       checklist: initChecklist()
     }
@@ -71,5 +71,20 @@ export function useCustomers() {
     )
   }
 
-  return { customers, addCustomer, toggleItem }
+  function updateAccountType(customerId: number, accountType: string) {
+    setCustomers(prev =>
+      prev.map(customer =>
+        customer.id === customerId
+          ? {
+              ...customer,
+              accountType: customer.accountType.includes(accountType)
+                ? customer.accountType.filter(t => t !== accountType)
+                : [...customer.accountType, accountType],
+            }
+          : customer
+      )
+    )
+  }
+
+  return { customers, addCustomer, toggleItem, updateAccountType }
 }
