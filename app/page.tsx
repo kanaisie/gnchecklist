@@ -31,7 +31,7 @@ export default function Home(){
   ] as const
 
   const filteredCustomers = customers.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase())
+    `${c.givenName} ${c.lastName}`.toLowerCase().includes(search.toLowerCase())
   )
 
   // Show only first 10 by default; when searching, show all matches

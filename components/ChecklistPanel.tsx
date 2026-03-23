@@ -11,10 +11,12 @@ interface Props{
 }
 
 const ACCOUNT_TYPES = [
-  "Checking",
-  "Savings",
-  "DDA",
+  "Personal Checking",
+  "Personal Savings",
   "CD",
+  "Business Checking",
+  "Business Savings",
+  "Statement Savings",
   "Money Market",
   "Loan",
   "Credit Card",
@@ -31,6 +33,7 @@ export default function ChecklistPanel({customer,toggleItem,updateAccountType,si
   }
 
   function exportChecklist(c: Customer) {
+    const fullName = `${c.givenName} ${c.lastName}`.trim()
     const completedLine = c.completedAt
       ? `- Completed at: ${new Date(c.completedAt).toLocaleString()}`
       : "- Completed at: Not completed yet"
@@ -45,7 +48,7 @@ export default function ChecklistPanel({customer,toggleItem,updateAccountType,si
       `> **CONFIDENTIAL** – Internal use only`,
       ``,
       `## Customer`,
-      `- Name: ${c.name}`,
+      `- Name: ${fullName}`,
       `- Account type: ${c.accountType.join(", ")}`,
       `- Status: ${c.status}`,
       `- By: ${assignee}`,
@@ -62,7 +65,7 @@ export default function ChecklistPanel({customer,toggleItem,updateAccountType,si
     const blob = new Blob([content], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const safeName = c.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    const safeName = fullName.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
 
     link.href = url;
     link.download = `${safeName}-checklist.md`;
@@ -78,7 +81,7 @@ export default function ChecklistPanel({customer,toggleItem,updateAccountType,si
       <div className="max-w-xl mx-auto bg-white rounded-xl border border-slate-200 shadow-sm p-5">
 
         <h2 className="text-2xl font-semibold text-slate-900 mb-2">
-          {customer.name}
+          {customer.givenName} {customer.lastName}
         </h2>
 
         <div className="text-sm text-slate-600 mb-4 space-y-1">

@@ -1,7 +1,6 @@
 "use client"
 
 import { Customer } from "@/types/customer"
-import { useEffect, useState } from "react"
 
 interface Props {
   customers: Customer[]
@@ -12,16 +11,6 @@ interface Props {
 
 
 export default function CustomerQueue({customers,onSelect}:Props){
-
-const [test,setTest] = useState<any[]>([])
-useEffect(() => {
-    fetch("/api/clients")
-      .then((res) => res.json())
-      .then((data) => setTest(data))
-      .catch((err) => console.error(err));
-  }, []);  
-  
-  console.log(test)
   return (
     <div className="w-full md:w-80 border-r border-slate-200 bg-white/80 backdrop-blur p-4">
 
@@ -37,11 +26,11 @@ useEffect(() => {
             onClick={()=>onSelect(customer.id)}
           >
             <div className="font-medium text-slate-900 truncate">
-              {customer.name}
+              {customer.givenName} {customer.lastName}
             </div>
 
             <div className="mt-0.5 text-xs text-slate-500">
-              {customer.accountType}
+              {customer.accountType.join(", ")}
             </div>
           </div>
         ))}

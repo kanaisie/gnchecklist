@@ -12,7 +12,7 @@ export default function Header() {
   return (
     <header className="p-4 sm:p-6 border-b border-slate-200 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-3">
       <h1 className="text-xl font-bold">
-        Customer Checklist
+        GN Customer Checklist
       </h1>
       {user && (
         <div className="flex items-center gap-3">

@@ -1,37 +1,98 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { CHECKLIST } from "@/data/checklist"
 import { Customer } from "@/types/customer"
 import { RAW_CUSTOMERS } from "@/data/customers"
 
-function initChecklist() {
-  return CHECKLIST.map(item => ({
+function hasBusinessAccountType(accountTypes: string[]) {
+  return accountTypes.some(type => type.toLowerCase().includes("business"))
+}
+
+function buildChecklist(accountTypes: string[], existingChecklist?: Customer["checklist"]) {
+  const includeBusiness = hasBusinessAccountType(accountTypes)
+  const baseItems = CHECKLIST.filter(
+    item => includeBusiness || item.category !== "Business Accounts"
+  )
+
+  return baseItems.map(item => ({
     ...item,
-    done: false
+    done: existingChecklist?.find(existing => existing.id === item.id)?.done ?? false,
   }))
 }
-console.log(RAW_CUSTOMERS)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 export function useCustomers() {
 
   const [customers, setCustomers] = useState<Customer[]>(() =>
     RAW_CUSTOMERS.map((c: any, index: number) => ({
       id: index + 1,
-      name: `${c.first} ${c.last}`,
+      givenName: c.first ?? "",
+      lastName: c.last ?? "",
       accountType: ["Checking"],
       status: "pending",
-      checklist: initChecklist()
+      checklist: buildChecklist(["Checking"])
     }))
   )
 
+  async function getClients() {
+    const res = await fetch("/api/clients")
+    if (!res.ok) {
+      const text = await res.text()
+      console.error("Get /api/clients error:", res.status, text)
+      return null
+    }
+
+    return res.json()
+  }
+  
+   useEffect(() => {
+    getClients().then(data => {
+      const apiClients = Array.isArray(data?.data) ? data.data : []
+      if (apiClients.length === 0) return
+
+      setCustomers(
+        apiClients.map((c: any, index: number) => ({
+          id: Number(c.id) || index + 1,
+          givenName: c.givenName ?? "",
+          lastName: c.lastName ?? "",
+          accountType: ["Checking"],
+          status: "pending",
+          checklist: buildChecklist(["Checking"]),
+        }))
+      )
+    })
+   }, [])
+  
+
+ 
+
   function addCustomer(name: string, accountType: string) {
+    const [first = "", ...rest] = name.trim().split(/\s+/)
+    const last = rest.join(" ")
 
     const newCustomer: Customer = {
       id: Date.now(),
-      name,
+      givenName: first,
+      lastName: last,
       accountType: [accountType],
       status: "pending",
-      checklist: initChecklist()
+      checklist: buildChecklist([accountType])
     }
 
     setCustomers(prev => [...prev, newCustomer])
@@ -80,6 +141,12 @@ export function useCustomers() {
               accountType: customer.accountType.includes(accountType)
                 ? customer.accountType.filter(t => t !== accountType)
                 : [...customer.accountType, accountType],
+              checklist: buildChecklist(
+                customer.accountType.includes(accountType)
+                  ? customer.accountType.filter(t => t !== accountType)
+                  : [...customer.accountType, accountType],
+                customer.checklist
+              ),
             }
           : customer
       )
