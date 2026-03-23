@@ -19,13 +19,13 @@ export const CHECKLIST = [
     { id: "business_account", label: "Beneficial Ownership Certification Verified ", category: "Business Accounts" },
  
     { id: "business_account-2", label: "IDs collected for all owners", category: "Business Accounts" },
-  
     { id: "business_account-3", label: "Internet Gambling/ Certifcation Form Signed", category: "Business Accounts" },
     { id: "business_account-3", label: "EIN verification", category: "Business Accounts" },
     { id: "business_account-4", label: "Articles of incorporation/Partnership Deed", category: "Business Accounts" },
     { id: "business_account-5", label: "Operating agreement", category: "Business Accounts" },
     { id: "business_account-6", label: "Business license", category: "Business Accounts" },
-    { id: "disclosure", label: "All Discloures Presented", category: "Disclosure & Agreement" },
+
+  
     { id: "disclosure-1", label: "Customer has signed all disclosures", category: "Disclosure & Agreement" },
     { id: "Fraud-1", label: "Customer Check Against ChexSystems", category: "Fraud & Risk Controls" },
 
