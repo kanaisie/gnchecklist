@@ -20,7 +20,7 @@ export const CHECKLIST = [
  
     { id: "business_account-2", label: "IDs collected for all owners", category: "Business Accounts" },
   
-    { id: "business_account-3", label: "Internet Gaming/ Certifcation Form Signed", category: "Business Accounts" },
+    { id: "business_account-3", label: "Internet Gambling/ Certifcation Form Signed", category: "Business Accounts" },
     { id: "business_account-3", label: "EIN verification", category: "Business Accounts" },
     { id: "business_account-4", label: "Articles of incorporation/Partnership Deed", category: "Business Accounts" },
     { id: "business_account-5", label: "Operating agreement", category: "Business Accounts" },
